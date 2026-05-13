@@ -15,7 +15,7 @@ from ipv8.configuration import (
     WalkerDefinition,
 )
 
-GROUP_ID = "0254ef0e"
+GROUP_ID = "80d4b9225f25dcd4"
 MY_INDEX = 0
 SERVER_KEY_HEX = "4c69624e61434c504b3a82e33614a342774e084af80835838d6dbdb64a537d3ddb6c1d82011a7f101553cda40cf5fa0e0fc23abd0a9c4f81322282c5b34566f6b8401f5f683031e60c96"
 
@@ -29,7 +29,7 @@ MY_PUBLIC_KEY = load_my_public_key("razvan.pem")
 GROUP_KEYS = [
     MY_PUBLIC_KEY,
     bytes.fromhex("4c69624e61434c504b3a47aea3e964cb96a72c180f25ab4b3418c9741a144c70b98d20755ca24d00e969014d036700220bba081f9ce2e263d4222d8c574bca44bb70008d919e218f3a9b"),
-    bytes.fromhex("4c69624e61434c504b3a427b2ddfe21490c98f2ce55297ea7802ad3d300904fb938429ca8c2093812511c0769f7c31a213e0b07f546cc646b7c7f24b36856b0aa7d795c86a815dc4a649"),
+    bytes.fromhex("4c69624e61434c504b3a33eebeffe4935cec64f15e232fa8c63fb9817633b4617c5a04a08b7e820efb329a9c379ff485ba5244b8f69e1c04900b27d915a0e6c1e54d7d7f301a208a9999"),
 ]
 
 class ChallengeRequest(Payload):
@@ -162,6 +162,20 @@ class HelloMsg(Payload):
     @classmethod
     def from_unpack_list(cls, i, pk):
         return cls(i, pk)
+    
+class NextRoundMsg(Payload):
+    msg_id = 13
+    format_list = ["q"]
+
+    def __init__(self, round_number):
+        self.round_number = round_number
+
+    def to_pack_list(self):
+        return [("q", self.round_number)]
+
+    @classmethod
+    def from_unpack_list(cls, r):
+        return cls(r)
 
 
 class Lab2Community(Community):
@@ -190,6 +204,7 @@ class Lab2Community(Community):
         self.add_message_handler(NonceMsg, self.on_nonce)
         self.add_message_handler(SigMsg, self.on_sig)
         self.add_message_handler(HelloMsg, self.on_hello)
+        self.add_message_handler(NextRoundMsg, self.on_next_round)
 
     def started(self):
         print(f"[{time.time():.3f}] client started")
@@ -268,7 +283,7 @@ class Lab2Community(Community):
         self.process_nonce(payload.nonce, payload.round_number)
 
     def process_nonce(self, nonce, round_number):
-        sig = self.my_peer.key.sign(nonce)
+        sig = default_eccrypto.create_signature(self.my_peer.key, nonce)
         submitter = round_number - 1
 
         if MY_INDEX == submitter:
@@ -282,6 +297,7 @@ class Lab2Community(Community):
     @lazy_wrapper(SigMsg)
     def on_sig(self, peer, payload):
         sender_key = peer.public_key.key_to_bin()
+        print(f"[{time.time():.3f}] received sig for round {payload.round_number} from {sender_key.hex()}")
         sender_idx = GROUP_KEYS.index(sender_key)
         self.collected_sigs[sender_idx] = payload.sig
         self.try_submit(payload.round_number)
@@ -304,7 +320,12 @@ class Lab2Community(Community):
     @lazy_wrapper(RoundResult)
     def on_result(self, peer, payload):
         now = time.time()
-        print(f"[{now:.3f}] {payload.message} (round time {now - self.round_start_time:.3f}s, total {now - self.start_time:.3f}s)")
+
+        print(
+            f"[{now:.3f}] {payload.message} "
+            f"(round time {now - self.round_start_time:.3f}s, "
+            f"total {now - self.start_time:.3f}s)"
+        )
 
         if not payload.success:
             return
@@ -314,7 +335,21 @@ class Lab2Community(Community):
             return
 
         next_round = payload.round_number + 1
-        if MY_INDEX == (next_round - 1):
+        next_submitter = next_round - 1
+
+        if next_submitter in self.peers_by_key:
+            print(f"[{now:.3f}] notifying peer {next_submitter} to start round {next_round}")
+
+            self.ez_send(
+                self.peers_by_key[next_submitter],
+                NextRoundMsg(next_round)
+            )
+
+    @lazy_wrapper(NextRoundMsg)
+    def on_next_round(self, peer, payload):
+        print(f"[{time.time():.3f}] received next round trigger for round {payload.round_number}")
+
+        if MY_INDEX == (payload.round_number - 1):
             self.request_challenge()
 
 
