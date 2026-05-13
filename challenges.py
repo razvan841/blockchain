@@ -15,7 +15,7 @@ from ipv8.configuration import (
     WalkerDefinition,
 )
 
-GROUP_ID = "80d4b9225f25dcd4"
+GROUP_ID = "d216a9cf1b08a1cc"
 MY_INDEX = 0
 SERVER_KEY_HEX = "4c69624e61434c504b3a82e33614a342774e084af80835838d6dbdb64a537d3ddb6c1d82011a7f101553cda40cf5fa0e0fc23abd0a9c4f81322282c5b34566f6b8401f5f683031e60c96"
 
