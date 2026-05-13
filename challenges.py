@@ -1,8 +1,6 @@
 import asyncio
 import time
 from ipv8.community import Community
-from ipv8.lazy_community import lazy_wrapper
-from dataclasses import dataclass
 from ipv8.messaging.payload import Payload
 from ipv8_service import IPv8
 from ipv8.keyvault.crypto import default_eccrypto
@@ -15,9 +13,14 @@ from ipv8.configuration import (
     WalkerDefinition,
 )
 
-GROUP_ID = "0254ef0e"
+GROUP_ID = "ad5b15e8918c4b54"
 MY_INDEX = 0
-SERVER_KEY_HEX = "4c69624e61434c504b3a82e33614a342774e084af80835838d6dbdb64a537d3ddb6c1d82011a7f101553cda40cf5fa0e0fc23abd0a9c4f81322282c5b34566f6b8401f5f683031e60c96"
+
+SERVER_KEY_HEX = (
+    "4c69624e61434c504b3a82e33614a342774e084af80835838d6dbdb64a537d3d"
+    "db6c1d82011a7f101553cda40cf5fa0e0fc23abd0a9c4f81322282c5b34566f6"
+    "b8401f5f683031e60c96"
+)
 
 def load_my_public_key(path):
     with open(path, "rb") as f:
@@ -28,9 +31,18 @@ MY_PUBLIC_KEY = load_my_public_key("razvan.pem")
 
 GROUP_KEYS = [
     MY_PUBLIC_KEY,
-    bytes.fromhex("4c69624e61434c504b3a47aea3e964cb96a72c180f25ab4b3418c9741a144c70b98d20755ca24d00e969014d036700220bba081f9ce2e263d4222d8c574bca44bb70008d919e218f3a9b"),
-    bytes.fromhex("4c69624e61434c504b3a427b2ddfe21490c98f2ce55297ea7802ad3d300904fb938429ca8c2093812511c0769f7c31a213e0b07f546cc646b7c7f24b36856b0aa7d795c86a815dc4a649"),
+    bytes.fromhex(
+        "4c69624e61434c504b3a47aea3e964cb96a72c180f25ab4b3418c9741a144c70"
+        "b98d20755ca24d00e969014d036700220bba081f9ce2e263d4222d8c574bca44"
+        "bb70008d919e218f3a9b"
+    ),
+    bytes.fromhex(
+        "4c69624e61434c504b3a427b2ddfe21490c98f2ce55297ea7802ad3d300904fb"
+        "938429ca8c2093812511c0769f7c31a213e0b07f546cc646b7c7f24b36856b0a"
+        "a7d795c86a815dc4a649"
+    ),
 ]
+
 
 class ChallengeRequest(Payload):
     msg_id = 3
@@ -163,7 +175,6 @@ class HelloMsg(Payload):
     def from_unpack_list(cls, i, pk):
         return cls(i, pk)
 
-
 class Lab2Community(Community):
 
     community_id = bytes.fromhex("4c61623247726f75705369676e696e6732303236")
@@ -175,7 +186,6 @@ class Lab2Community(Community):
         self.peers_by_key = {}
         self.collected_sigs = {}
         self.used_submitters = set()
-
         self.handshake_received = {}
 
         self.start_time = time.time()
@@ -185,11 +195,11 @@ class Lab2Community(Community):
         self.stable_ticks = 0
         self.handshake_done = False
 
-        self.add_message_handler(ChallengeResponse, self.on_challenge)
-        self.add_message_handler(RoundResult, self.on_result)
-        self.add_message_handler(NonceMsg, self.on_nonce)
-        self.add_message_handler(SigMsg, self.on_sig)
-        self.add_message_handler(HelloMsg, self.on_hello)
+        self.add_message_handler(ChallengeResponse, self.on_challenge_packet)
+        self.add_message_handler(RoundResult, self.on_result_packet)
+        self.add_message_handler(NonceMsg, self.on_nonce_packet)
+        self.add_message_handler(SigMsg, self.on_sig_packet)
+        self.add_message_handler(HelloMsg, self.on_hello_packet)
 
     def started(self):
         print(f"[{time.time():.3f}] client started")
@@ -206,10 +216,13 @@ class Lab2Community(Community):
                 if key == gk:
                     self.peers_by_key[i] = p
 
-        print(f"{self.peers_by_key.keys()} {self.server_peer.public_key.key_to_bin().hex() if self.server_peer else None}")
-        print(f"[{time.time():.3f}] peers={len(self.peers_by_key)} server={'yes' if self.server_peer else 'no'}")
+        print(
+            f"[{time.time():.3f}] "
+            f"peers={list(self.peers_by_key.keys())} "
+            f"server={'yes' if self.server_peer else 'no'}"
+        )
 
-        if self.server_peer and len(self.peers_by_key) == 2:
+        if self.server_peer and len(self.peers_by_key) >= 2:
             self.stable_ticks += 1
         else:
             self.stable_ticks = 0
@@ -217,21 +230,47 @@ class Lab2Community(Community):
         if self.stable_ticks >= 2:
             self.cancel_pending_task("discover")
             self.ready_time = time.time()
-            print(f"[{self.ready_time:.3f}] network ready (took {self.ready_time - self.start_time:.3f}s)")
+            print(
+                f"[{self.ready_time:.3f}] network ready "
+                f"(took {self.ready_time - self.start_time:.3f}s)"
+            )
+
             self.start_handshake()
 
     def start_handshake(self):
         for i, p in self.peers_by_key.items():
             if i != MY_INDEX:
-                print(f"Sent hello to {p.public_key.key_to_bin().hex()}")
-                self.ez_send(p, HelloMsg(MY_INDEX, MY_PUBLIC_KEY))
-                print(f"Sent hello to {p.public_key.key_to_bin().hex()}")
+
+                print(
+                    f"[{time.time():.3f}] "
+                    f"sending hello to {i}"
+                )
+
+                self.ez_send(
+                    p,
+                    HelloMsg(MY_INDEX, MY_PUBLIC_KEY)
+                )
+
         self.handshake_received[MY_INDEX] = MY_PUBLIC_KEY
 
-    @lazy_wrapper(HelloMsg)
+    def on_hello_packet(self, peer, packet):
+
+        payload = self.safe_unpack(HelloMsg, packet)
+
+        if payload is None:
+            return
+
+        self.on_hello(peer, payload)
+
     def on_hello(self, peer, payload):
+
         self.handshake_received[payload.index] = payload.pubkey
-        print(f"[{time.time():.3f}] received handshake from {peer.public_key.key_to_bin().hex()} (index {payload.index})")
+
+        print(
+            f"[{time.time():.3f}] "
+            f"received handshake from index={payload.index}"
+        )
+
         if len(self.handshake_received) == 3 and not self.handshake_done:
             for i in range(3):
                 if i not in self.handshake_received:
@@ -241,31 +280,78 @@ class Lab2Community(Community):
                     return
 
             self.handshake_done = True
-            now = time.time()
-            print(f"[{now:.3f}] handshake complete")
+            print(f"[{time.time():.3f}] handshake complete")
 
             if MY_INDEX == 0:
                 self.request_challenge()
 
     def request_challenge(self):
         self.round_start_time = time.time()
-        print(f"[{self.round_start_time:.3f}] requesting challenge")
-        self.ez_send(self.server_peer, ChallengeRequest(GROUP_ID))
 
-    @lazy_wrapper(ChallengeResponse)
+        print(
+            f"[{self.round_start_time:.3f}] "
+            f"requesting challenge"
+        )
+
+        self.ez_send(
+            self.server_peer,
+            ChallengeRequest(GROUP_ID)
+        )
+
+    def on_challenge_packet(self, peer, packet):
+
+        payload = self.safe_unpack(
+            ChallengeResponse,
+            packet
+        )
+        if payload is None:
+            return
+
+        self.on_challenge(peer, payload)
+
     def on_challenge(self, peer, payload):
+
         now = time.time()
-        print(f"[{now:.3f}] received challenge round {payload.round_number} (latency {now - self.round_start_time:.3f}s)")
+
+        print(
+            f"[{now:.3f}] "
+            f"received challenge round "
+            f"{payload.round_number} "
+            f"(latency "
+            f"{now - self.round_start_time:.3f}s)"
+        )
 
         for i, p in self.peers_by_key.items():
             if i != MY_INDEX:
-                self.ez_send(p, NonceMsg(payload.nonce, payload.round_number))
 
-        self.process_nonce(payload.nonce, payload.round_number)
+                self.ez_send(
+                    p,
+                    NonceMsg(
+                        payload.nonce,
+                        payload.round_number
+                    )
+                )
 
-    @lazy_wrapper(NonceMsg)
+        self.process_nonce(
+            payload.nonce,
+            payload.round_number
+        )
+
+    def on_nonce_packet(self, peer, packet):
+
+        payload = self.safe_unpack(NonceMsg, packet)
+
+        if payload is None:
+            return
+
+        self.on_nonce(peer, payload)
+
     def on_nonce(self, peer, payload):
-        self.process_nonce(payload.nonce, payload.round_number)
+
+        self.process_nonce(
+            payload.nonce,
+            payload.round_number
+        )
 
     def process_nonce(self, nonce, round_number):
         sig = self.my_peer.key.sign(nonce)
@@ -274,53 +360,87 @@ class Lab2Community(Community):
         if MY_INDEX == submitter:
             self.collected_sigs[MY_INDEX] = sig
         else:
-            self.ez_send(self.peers_by_key[submitter], SigMsg(round_number, sig))
+            if submitter in self.peers_by_key:
+
+                self.ez_send(
+                    self.peers_by_key[submitter],
+                    SigMsg(round_number, sig)
+                )
 
         if MY_INDEX == submitter:
             self.try_submit(round_number)
 
-    @lazy_wrapper(SigMsg)
+    def on_sig_packet(self, peer, packet):
+        payload = self.safe_unpack(SigMsg, packet)
+        if payload is None:
+            return
+
+        self.on_sig(peer, payload)
+
     def on_sig(self, peer, payload):
         sender_key = peer.public_key.key_to_bin()
-        sender_idx = GROUP_KEYS.index(sender_key)
+        try:
+            sender_idx = GROUP_KEYS.index(sender_key)
+        except ValueError:
+            print("[WARN] unknown sender")
+            return
+
         self.collected_sigs[sender_idx] = payload.sig
         self.try_submit(payload.round_number)
 
     def try_submit(self, round_number):
         if len(self.collected_sigs) < 3:
             return
-
         now = time.time()
-        print(f"[{now:.3f}] submitting round {round_number} (prep {now - self.round_start_time:.3f}s)")
+        print(
+            f"[{now:.3f}] "
+            f"submitting round {round_number} "
+            f"(prep "
+            f"{now - self.round_start_time:.3f}s)"
+        )
 
         sigs = [self.collected_sigs[i] for i in range(3)]
 
-        self.ez_send(self.server_peer,
-                     SignatureBundle(GROUP_ID, round_number, *sigs))
-
+        self.ez_send(self.server_peer, SignatureBundle(GROUP_ID, round_number, *sigs))
         self.used_submitters.add(MY_INDEX)
         self.collected_sigs.clear()
 
-    @lazy_wrapper(RoundResult)
+    def on_result_packet(self, peer, packet):
+        payload = self.safe_unpack(RoundResult, packet)
+        if payload is None:
+            return
+
+        self.on_result(peer, payload)
+
     def on_result(self, peer, payload):
         now = time.time()
-        print(f"[{now:.3f}] {payload.message} (round time {now - self.round_start_time:.3f}s, total {now - self.start_time:.3f}s)")
+        print(
+            f"[{now:.3f}] "
+            f"{payload.message} "
+            f"(round time "
+            f"{now - self.round_start_time:.3f}s, "
+            f"total "
+            f"{now - self.start_time:.3f}s)"
+        )
 
         if not payload.success:
             return
 
         if payload.rounds_completed == 3:
-            print(f"[{now:.3f}] DONE total_time={now - self.start_time:.3f}s")
+            print(
+                f"[{now:.3f}] DONE "
+                f"total_time="
+                f"{now - self.start_time:.3f}s"
+            )
+
             return
 
         next_round = payload.round_number + 1
         if MY_INDEX == (next_round - 1):
             self.request_challenge()
 
-
 async def main():
     builder = ConfigBuilder().clear_keys().clear_overlays()
-
     builder.add_key("mykey", "curve25519", "razvan.pem")
 
     builder.add_overlay(
