@@ -1,83 +1,72 @@
-from dataclasses import dataclass
+from ipv8.messaging.lazy_payload import VariablePayloadWID
 from primitives import compute_block_hash, sha256
-@dataclass
-class RegisterBlockchain:
+
+
+# --- Registration messages ---
+
+class RegisterBlockchain(VariablePayloadWID):
     msg_id = 1
-    group_id: str
-    community_id: bytes
-@dataclass
-class RegisterResponse:
+    format_list = ["varlenHutf8", "varlenH"]
+    names = ["group_id", "community_id"]
+
+
+class RegisterResponse(VariablePayloadWID):
     msg_id = 2
-    success: bool
-    message: str
+    format_list = ["?", "varlenHutf8"]
+    names = ["success", "message"]
+
 
 # --- Client <-> server transaction / query messages ---
 
-@dataclass
-class SubmitTransaction:
+class SubmitTransaction(VariablePayloadWID):
     msg_id = 1
-    sender_key: bytes
-    data: bytes
-    timestamp: int
-    signature: bytes
+    format_list = ["varlenH", "varlenH", "q", "varlenH"]
+    names = ["sender_key", "data", "timestamp", "signature"]
 
-@dataclass
-class SubmitTransactionResponse:
+
+class SubmitTransactionResponse(VariablePayloadWID):
     msg_id = 2
-    success: bool
-    tx_hash: bytes
-    message: str
+    format_list = ["?", "varlenH", "varlenHutf8"]
+    names = ["success", "tx_hash", "message"]
 
-@dataclass
-class GetChainHeight:
+
+class GetChainHeight(VariablePayloadWID):
     msg_id = 3
-    request_id: int
+    format_list = ["q"]
+    names = ["request_id"]
 
-@dataclass
-class ChainHeightResponse:
+
+class ChainHeightResponse(VariablePayloadWID):
     msg_id = 4
-    request_id: int
-    height: int
-    tip_hash: bytes
+    format_list = ["q", "q", "varlenH"]
+    names = ["request_id", "height", "tip_hash"]
 
-@dataclass
-class GetBlock:
+
+class GetBlock(VariablePayloadWID):
     msg_id = 5
-    height: int
+    format_list = ["q"]
+    names = ["height"]
 
-@dataclass
-class BlockResponse:
+
+class BlockResponse(VariablePayloadWID):
     msg_id = 6
-    height: int
-    prev_hash: bytes
-    txs_hash: bytes
-    timestamp: int
-    difficulty: int
-    nonce: int
-    block_hash: bytes
-    tx_hashes: bytes
+    format_list = ["q", "varlenH", "varlenH", "q", "q", "q", "varlenH", "varlenH"]
+    names = ["height", "prev_hash", "txs_hash", "timestamp", "difficulty", "nonce", "block_hash", "tx_hashes"]
+
 
 # --- Peer-to-peer gossip messages ---
 
-@dataclass
-class TxMsg:
+class TxMsg(VariablePayloadWID):
     msg_id = 10
-    sender_key: bytes
-    data: bytes
-    timestamp: int
-    signature: bytes
+    format_list = ["varlenH", "varlenH", "Q", "varlenH"]
+    names = ["sender_key", "data", "timestamp", "signature"]
 
 
-@dataclass
-class BlockMsg:
+class BlockMsg(VariablePayloadWID):
     msg_id = 11
-    height: int
-    prev_hash: bytes
-    txs_hash: bytes
-    timestamp: int
-    difficulty: int
-    nonce: int
-    tx_hashes: bytes
+    format_list = ["I", "32s", "32s", "Q", "I", "Q", "varlenH"]
+    names = ["height", "prev_hash", "txs_hash", "timestamp", "difficulty", "nonce", "tx_hashes"]
+
 
 class Block:
     def __init__(self, height: int, prev_hash: bytes, txs_hash: bytes,
