@@ -1,0 +1,6 @@
+# Runtime dependencies
+pyipv8
+cryptography==46.0.0
+
+# Test dependencies
+pytest>=8.0
