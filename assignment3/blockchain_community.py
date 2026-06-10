@@ -26,7 +26,6 @@ from primitives import (
     sha256,
 )
 
-
 class BlockchainCommunity(Community):
     community_id = COMMUNITY_ID
 

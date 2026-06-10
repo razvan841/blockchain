@@ -14,7 +14,6 @@ from models import GENESIS
 from blockchain_community import BlockchainCommunity
 from registration_community import RegistrationCommunity
 
-
 async def run():
     print(f"[init] genesis hash={GENESIS.block_hash.hex()}")
     print(f"[init] community={COMMUNITY_ID.hex()}  group={GROUP_ID}  index={INDEX}")
@@ -25,8 +24,7 @@ async def run():
     builder.add_key("mykey", "curve25519", PEM_FILE)
 
     walker = [WalkerDefinition(Strategy.RandomWalk, 20, {"timeout": 3.0})]
-    boot = [BootstrapperDefinition(Bootstrapper.DispersyBootstrapper,
-                                   dict(DISPERSY_BOOTSTRAPPER["init"]))]
+    boot = [BootstrapperDefinition(Bootstrapper.DispersyBootstrapper, dict(DISPERSY_BOOTSTRAPPER["init"]))]
 
     builder.add_overlay("RegistrationCommunity", "mykey", walker, boot, {}, [("started",)])
     builder.add_overlay("BlockchainCommunity",   "mykey", walker, boot, {}, [("started",)])

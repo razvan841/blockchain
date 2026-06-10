@@ -1,12 +1,8 @@
-"""The RegistrationCommunity: finds the server and registers our blockchain."""
-
 from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 
 from config import COMMUNITY_ID, GROUP_ID, INDEX, MIN_BLOCKCHAIN_PEERS, SERVER_KEY_HEX
 from models import RegisterBlockchain, RegisterResponse
-
-
 class RegistrationCommunity(Community):
     community_id = bytes.fromhex("4c616233426c6f636b636861696e323032365057")
 

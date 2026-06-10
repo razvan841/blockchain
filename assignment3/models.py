@@ -1,25 +1,15 @@
-"""Wire-message dataclasses and the in-memory Block representation."""
-
 from dataclasses import dataclass
-
 from primitives import compute_block_hash, sha256
-
-
-# --- Registration protocol messages ---
-
 @dataclass
 class RegisterBlockchain:
     msg_id = 1
     group_id: str
     community_id: bytes
-
-
 @dataclass
 class RegisterResponse:
     msg_id = 2
     success: bool
     message: str
-
 
 # --- Client <-> server transaction / query messages ---
 
@@ -31,7 +21,6 @@ class SubmitTransaction:
     timestamp: int
     signature: bytes
 
-
 @dataclass
 class SubmitTransactionResponse:
     msg_id = 2
@@ -39,12 +28,10 @@ class SubmitTransactionResponse:
     tx_hash: bytes
     message: str
 
-
 @dataclass
 class GetChainHeight:
     msg_id = 3
     request_id: int
-
 
 @dataclass
 class ChainHeightResponse:
@@ -53,12 +40,10 @@ class ChainHeightResponse:
     height: int
     tip_hash: bytes
 
-
 @dataclass
 class GetBlock:
     msg_id = 5
     height: int
-
 
 @dataclass
 class BlockResponse:
@@ -71,7 +56,6 @@ class BlockResponse:
     nonce: int
     block_hash: bytes
     tx_hashes: bytes
-
 
 # --- Peer-to-peer gossip messages ---
 
@@ -94,7 +78,6 @@ class BlockMsg:
     difficulty: int
     nonce: int
     tx_hashes: bytes
-
 
 class Block:
     def __init__(self, height: int, prev_hash: bytes, txs_hash: bytes,
